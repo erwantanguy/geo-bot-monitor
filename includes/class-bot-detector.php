@@ -12,7 +12,7 @@ class GEO_Bot_Detector {
     }
 
     public function detect() {
-        $user_agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $user_agent = isset($_SERVER['HTTP_USER_AGENT']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])) : '';
         
         if (empty($user_agent)) {
             return null;
@@ -75,7 +75,7 @@ class GEO_Bot_Detector {
 
         foreach ($ip_keys as $key) {
             if (!empty($_SERVER[$key])) {
-                $ip = $_SERVER[$key];
+                $ip = sanitize_text_field(wp_unslash($_SERVER[$key]));
                 if (strpos($ip, ',') !== false) {
                     $ip = trim(explode(',', $ip)[0]);
                 }
@@ -90,42 +90,9 @@ class GEO_Bot_Detector {
 
     private function get_current_url() {
         $protocol = is_ssl() ? 'https://' : 'http://';
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $uri = $_SERVER['REQUEST_URI'] ?? '';
+        $host = isset($_SERVER['HTTP_HOST']) ? sanitize_text_field(wp_unslash($_SERVER['HTTP_HOST'])) : '';
+        $uri = isset($_SERVER['REQUEST_URI']) ? esc_url_raw(wp_unslash($_SERVER['REQUEST_URI'])) : '';
 
         return $protocol . $host . $uri;
-    }
-
-    public function verify_bot($bot_name, $ip) {
-        if (in_array($bot_name, ['Googlebot', 'Googlebot-Mobile', 'Googlebot-Image'])) {
-            return $this->verify_google_bot($ip);
-        }
-
-        if ($bot_name === 'Bingbot') {
-            return $this->verify_bing_bot($ip);
-        }
-
-        return null;
-    }
-
-    private function verify_google_bot($ip) {
-        $host = gethostbyaddr($ip);
-        if ($host && (
-            str_ends_with($host, '.googlebot.com') ||
-            str_ends_with($host, '.google.com')
-        )) {
-            $resolved_ip = gethostbyname($host);
-            return $resolved_ip === $ip;
-        }
-        return false;
-    }
-
-    private function verify_bing_bot($ip) {
-        $host = gethostbyaddr($ip);
-        if ($host && str_ends_with($host, '.search.msn.com')) {
-            $resolved_ip = gethostbyname($host);
-            return $resolved_ip === $ip;
-        }
-        return false;
     }
 }

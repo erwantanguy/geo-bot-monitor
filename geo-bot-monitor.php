@@ -2,7 +2,7 @@
 /**
  * Plugin Name: GEO Bot Monitor
  * Description: Surveillance des visites de robots SEO et GEO/AI avec exports et comparaison de périodes
- * Version: 1.0.0
+ * Version: 1.0.1
  * Author: Erwan Tanguy
  * Text Domain: geo-bot-monitor
  * Requires at least: 6.0
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('GEO_BOT_MONITOR_VERSION', '1.0.0');
+define('GEO_BOT_MONITOR_VERSION', '1.0.1');
 define('GEO_BOT_MONITOR_PATH', plugin_dir_path(__FILE__));
 define('GEO_BOT_MONITOR_URL', plugin_dir_url(__FILE__));
 
@@ -27,6 +27,7 @@ require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-settings.php';
 
 register_activation_hook(__FILE__, 'geo_bot_monitor_activate');
 register_deactivation_hook(__FILE__, 'geo_bot_monitor_deactivate');
+register_uninstall_hook(__FILE__, 'geo_bot_monitor_uninstall');
 
 function geo_bot_monitor_activate() {
     global $wpdb;
@@ -45,7 +46,8 @@ function geo_bot_monitor_activate() {
         response_time FLOAT DEFAULT 0,
         INDEX idx_date (visit_date),
         INDEX idx_bot (bot_name),
-        INDEX idx_category (bot_category)
+        INDEX idx_category (bot_category),
+        INDEX idx_date_category (visit_date, bot_category)
     ) $charset_collate;";
 
     require_once ABSPATH . 'wp-admin/includes/upgrade.php';
@@ -57,10 +59,22 @@ function geo_bot_monitor_activate() {
 function geo_bot_monitor_deactivate() {
 }
 
+function geo_bot_monitor_uninstall() {
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'geo_bot_visits';
+    $wpdb->query("DROP TABLE IF EXISTS `$table_name`");
+    delete_option('geo_bot_monitor_db_version');
+    delete_option('geo_bot_monitor_api_key');
+}
+
 new GEO_Bot_API();
 new GEO_Bot_Settings();
 
 add_action('init', function() {
+    if (is_admin()) {
+        return;
+    }
+
     $detector = new GEO_Bot_Detector();
     $bot_info = $detector->detect();
     
@@ -183,68 +197,93 @@ function geo_bot_render_settings() {
 
 add_action('wp_ajax_geo_bot_export', function() {
     if (!current_user_can('manage_options')) {
-        wp_die('Accès refusé');
+        wp_die(esc_html__('Accès refusé', 'geo-bot-monitor'));
     }
 
     check_ajax_referer('geo_bot_export', 'nonce');
 
     $exporter = new GEO_Bot_Exporter();
-    $format = sanitize_text_field($_POST['format'] ?? 'csv');
-    $month = sanitize_text_field($_POST['month'] ?? '');
-    $year = intval($_POST['year'] ?? date('Y'));
+    $allowed_formats = ['csv', 'pdf', 'markdown'];
+    $format = isset($_POST['format']) ? sanitize_text_field(wp_unslash($_POST['format'])) : 'csv';
+    
+    if (!in_array($format, $allowed_formats, true)) {
+        $format = 'csv';
+    }
+
+    $month = isset($_POST['month']) ? sanitize_text_field(wp_unslash($_POST['month'])) : '';
+    $year = isset($_POST['year']) ? absint($_POST['year']) : (int) gmdate('Y');
 
     $exporter->export($format, $month, $year);
 });
 
 add_action('wp_ajax_geo_bot_purge', function() {
     if (!current_user_can('manage_options')) {
-        wp_die('Accès refusé');
+        wp_die(esc_html__('Accès refusé', 'geo-bot-monitor'));
     }
 
     check_ajax_referer('geo_bot_purge', 'nonce');
 
-    $months = isset($_POST['months']) ? array_map('sanitize_text_field', $_POST['months']) : [];
+    $months = isset($_POST['months']) ? array_map('sanitize_text_field', wp_unslash($_POST['months'])) : [];
     
     if (empty($months)) {
-        wp_send_json_error(['message' => 'Aucun mois sélectionné']);
+        wp_send_json_error(['message' => __('Aucun mois sélectionné', 'geo-bot-monitor')]);
     }
 
-    global $wpdb;
-    $table_name = $wpdb->prefix . 'geo_bot_visits';
+    $logger = new GEO_Bot_Logger();
     $deleted = 0;
 
     foreach ($months as $month_year) {
-        list($year, $month) = explode('-', $month_year);
-        $start_date = "$year-$month-01 00:00:00";
-        $end_date = date('Y-m-t 23:59:59', strtotime($start_date));
-        
-        $deleted += $wpdb->query($wpdb->prepare(
-            "DELETE FROM $table_name WHERE visit_date BETWEEN %s AND %s",
-            $start_date,
-            $end_date
-        ));
+        if (!preg_match('/^\d{4}-\d{2}$/', $month_year)) {
+            continue;
+        }
+
+        $parts = explode('-', $month_year);
+        if (count($parts) !== 2) {
+            continue;
+        }
+
+        $year = absint($parts[0]);
+        $month = absint($parts[1]);
+
+        $deleted += $logger->purge_month($year, $month);
     }
 
     wp_send_json_success([
-        'message' => sprintf('%d enregistrements supprimés', $deleted),
-        'deleted' => $deleted
+        'message' => sprintf(
+            /* translators: %d: number of deleted records */
+            __('%d enregistrements supprimés', 'geo-bot-monitor'),
+            $deleted
+        ),
+        'deleted' => $deleted,
     ]);
 });
 
 add_action('wp_ajax_geo_bot_get_comparison', function() {
     if (!current_user_can('manage_options')) {
-        wp_die('Accès refusé');
+        wp_die(esc_html__('Accès refusé', 'geo-bot-monitor'));
     }
 
     check_ajax_referer('geo_bot_compare', 'nonce');
 
-    $period1_start = sanitize_text_field($_POST['period1_start'] ?? '');
-    $period1_end = sanitize_text_field($_POST['period1_end'] ?? '');
-    $period2_start = sanitize_text_field($_POST['period2_start'] ?? '');
-    $period2_end = sanitize_text_field($_POST['period2_end'] ?? '');
+    $period1_start = isset($_POST['period1_start']) ? sanitize_text_field(wp_unslash($_POST['period1_start'])) : '';
+    $period1_end = isset($_POST['period1_end']) ? sanitize_text_field(wp_unslash($_POST['period1_end'])) : '';
+    $period2_start = isset($_POST['period2_start']) ? sanitize_text_field(wp_unslash($_POST['period2_start'])) : '';
+    $period2_end = isset($_POST['period2_end']) ? sanitize_text_field(wp_unslash($_POST['period2_end'])) : '';
 
     $dashboard = new GEO_Bot_Dashboard();
     $comparison = $dashboard->get_comparison_data($period1_start, $period1_end, $period2_start, $period2_end);
 
     wp_send_json_success($comparison);
+});
+
+add_action('wp_ajax_geo_bot_generate_api_key', function() {
+    if (!current_user_can('manage_options')) {
+        wp_die(esc_html__('Accès refusé', 'geo-bot-monitor'));
+    }
+
+    check_ajax_referer('geo_bot_generate_key', 'nonce');
+
+    $new_key = 'gbm_' . wp_generate_password(48, false, false);
+    
+    wp_send_json_success(['key' => $new_key]);
 });

@@ -12,35 +12,35 @@ class GEO_Bot_Dashboard {
     }
 
     public function render() {
-        $start_date = isset($_GET['start_date']) ? sanitize_text_field($_GET['start_date']) : date('Y-m-d', strtotime('-30 days'));
-        $end_date = isset($_GET['end_date']) ? sanitize_text_field($_GET['end_date']) : date('Y-m-d');
+        $start_date = isset($_GET['start_date']) ? sanitize_text_field(wp_unslash($_GET['start_date'])) : gmdate('Y-m-d', strtotime('-30 days'));
+        $end_date = isset($_GET['end_date']) ? sanitize_text_field(wp_unslash($_GET['end_date'])) : gmdate('Y-m-d');
 
         $stats = $this->logger->get_stats($start_date, $end_date);
         $category_labels = geo_bot_get_category_labels();
         $category_colors = geo_bot_get_category_colors();
         ?>
         <div class="wrap geo-bot-dashboard">
-            <h1><?php _e('Bot Monitor - Tableau de bord', 'geo-bot-monitor'); ?></h1>
+            <h1><?php esc_html_e('Bot Monitor - Tableau de bord', 'geo-bot-monitor'); ?></h1>
 
             <div class="geo-bot-filters">
                 <form method="get" action="">
                     <input type="hidden" name="page" value="geo-bot-monitor">
-                    <label for="start_date"><?php _e('Du', 'geo-bot-monitor'); ?></label>
+                    <label for="start_date"><?php esc_html_e('Du', 'geo-bot-monitor'); ?></label>
                     <input type="date" id="start_date" name="start_date" value="<?php echo esc_attr($start_date); ?>">
-                    <label for="end_date"><?php _e('Au', 'geo-bot-monitor'); ?></label>
+                    <label for="end_date"><?php esc_html_e('Au', 'geo-bot-monitor'); ?></label>
                     <input type="date" id="end_date" name="end_date" value="<?php echo esc_attr($end_date); ?>">
-                    <button type="submit" class="button button-primary"><?php _e('Filtrer', 'geo-bot-monitor'); ?></button>
+                    <button type="submit" class="button button-primary"><?php esc_html_e('Filtrer', 'geo-bot-monitor'); ?></button>
                 </form>
             </div>
 
             <div class="geo-bot-stats-grid">
                 <div class="geo-bot-stat-card geo-bot-stat-total">
-                    <span class="stat-value"><?php echo number_format_i18n($stats['total']); ?></span>
-                    <span class="stat-label"><?php _e('Visites totales', 'geo-bot-monitor'); ?></span>
+                    <span class="stat-value"><?php echo esc_html(number_format_i18n($stats['total'])); ?></span>
+                    <span class="stat-label"><?php esc_html_e('Visites totales', 'geo-bot-monitor'); ?></span>
                 </div>
                 <?php foreach ($stats['by_category'] as $cat => $data): ?>
                 <div class="geo-bot-stat-card" style="border-left-color: <?php echo esc_attr($category_colors[$cat] ?? '#999'); ?>">
-                    <span class="stat-value"><?php echo number_format_i18n($data->count); ?></span>
+                    <span class="stat-value"><?php echo esc_html(number_format_i18n($data->count)); ?></span>
                     <span class="stat-label"><?php echo esc_html($category_labels[$cat] ?? $cat); ?></span>
                 </div>
                 <?php endforeach; ?>
@@ -48,24 +48,24 @@ class GEO_Bot_Dashboard {
 
             <div class="geo-bot-charts-grid">
                 <div class="geo-bot-chart-card">
-                    <h3><?php _e('Evolution par jour', 'geo-bot-monitor'); ?></h3>
+                    <h3><?php esc_html_e('Evolution par jour', 'geo-bot-monitor'); ?></h3>
                     <canvas id="geo-bot-chart-daily"></canvas>
                 </div>
                 <div class="geo-bot-chart-card">
-                    <h3><?php _e('Répartition par catégorie', 'geo-bot-monitor'); ?></h3>
+                    <h3><?php esc_html_e('Répartition par catégorie', 'geo-bot-monitor'); ?></h3>
                     <canvas id="geo-bot-chart-categories"></canvas>
                 </div>
             </div>
 
             <div class="geo-bot-tables-grid">
                 <div class="geo-bot-table-card">
-                    <h3><?php _e('Top 20 Robots', 'geo-bot-monitor'); ?></h3>
+                    <h3><?php esc_html_e('Top 20 Robots', 'geo-bot-monitor'); ?></h3>
                     <table class="widefat striped">
                         <thead>
                             <tr>
-                                <th><?php _e('Robot', 'geo-bot-monitor'); ?></th>
-                                <th><?php _e('Catégorie', 'geo-bot-monitor'); ?></th>
-                                <th><?php _e('Visites', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Robot', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Catégorie', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Visites', 'geo-bot-monitor'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -77,7 +77,7 @@ class GEO_Bot_Dashboard {
                                         <?php echo esc_html($category_labels[$bot->bot_category] ?? $bot->bot_category); ?>
                                     </span>
                                 </td>
-                                <td><?php echo number_format_i18n($bot->count); ?></td>
+                                <td><?php echo esc_html(number_format_i18n($bot->count)); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -85,12 +85,12 @@ class GEO_Bot_Dashboard {
                 </div>
 
                 <div class="geo-bot-table-card">
-                    <h3><?php _e('Top 10 Pages visitées', 'geo-bot-monitor'); ?></h3>
+                    <h3><?php esc_html_e('Top 10 Pages visitées', 'geo-bot-monitor'); ?></h3>
                     <table class="widefat striped">
                         <thead>
                             <tr>
-                                <th><?php _e('URL', 'geo-bot-monitor'); ?></th>
-                                <th><?php _e('Visites', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('URL', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Visites', 'geo-bot-monitor'); ?></th>
                             </tr>
                         </thead>
                         <tbody>
@@ -99,7 +99,7 @@ class GEO_Bot_Dashboard {
                                 <td class="geo-bot-url-cell" title="<?php echo esc_attr($url->url_visited); ?>">
                                     <?php echo esc_html(wp_trim_words($url->url_visited, 10, '...')); ?>
                                 </td>
-                                <td><?php echo number_format_i18n($url->count); ?></td>
+                                <td><?php echo esc_html(number_format_i18n($url->count)); ?></td>
                             </tr>
                             <?php endforeach; ?>
                         </tbody>
@@ -110,8 +110,8 @@ class GEO_Bot_Dashboard {
 
         <script>
         var geoBotChartData = {
-            daily: <?php echo json_encode($this->prepare_daily_chart_data($stats['by_day'], $category_colors)); ?>,
-            categories: <?php echo json_encode($this->prepare_category_chart_data($stats['by_category'], $category_labels, $category_colors)); ?>
+            daily: <?php echo wp_json_encode($this->prepare_daily_chart_data($stats['by_day'], $category_colors)); ?>,
+            categories: <?php echo wp_json_encode($this->prepare_category_chart_data($stats['by_category'], $category_labels, $category_colors)); ?>
         };
         </script>
         <?php

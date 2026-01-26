@@ -15,20 +15,24 @@ class GEO_Bot_Logger {
     public function log($bot_info) {
         global $wpdb;
 
-        $wpdb->insert(
+        $result = $wpdb->insert(
             $this->table_name,
             [
                 'visit_date' => current_time('mysql'),
-                'bot_name' => $bot_info['bot_name'],
-                'bot_category' => $bot_info['bot_category'],
-                'user_agent' => $bot_info['user_agent'],
-                'ip_address' => $bot_info['ip_address'],
-                'url_visited' => $bot_info['url_visited'],
+                'bot_name' => sanitize_text_field($bot_info['bot_name']),
+                'bot_category' => sanitize_key($bot_info['bot_category']),
+                'user_agent' => sanitize_text_field($bot_info['user_agent']),
+                'ip_address' => sanitize_text_field($bot_info['ip_address']),
+                'url_visited' => esc_url_raw($bot_info['url_visited']),
                 'http_status' => http_response_code() ?: 200,
                 'response_time' => $this->get_response_time(),
             ],
             ['%s', '%s', '%s', '%s', '%s', '%s', '%d', '%f']
         );
+
+        if ($result === false) {
+            return 0;
+        }
 
         return $wpdb->insert_id;
     }
@@ -44,8 +48,8 @@ class GEO_Bot_Logger {
         global $wpdb;
 
         $defaults = [
-            'start_date' => date('Y-m-d', strtotime('-30 days')),
-            'end_date' => date('Y-m-d'),
+            'start_date' => gmdate('Y-m-d', strtotime('-30 days')),
+            'end_date' => gmdate('Y-m-d'),
             'bot_name' => '',
             'bot_category' => '',
             'limit' => 100,
@@ -55,62 +59,65 @@ class GEO_Bot_Logger {
         ];
 
         $args = wp_parse_args($args, $defaults);
+        $args['limit'] = min(absint($args['limit']), 10000);
+        $args['offset'] = absint($args['offset']);
 
         $where = ['1=1'];
         $values = [];
 
         if ($args['start_date']) {
             $where[] = 'visit_date >= %s';
-            $values[] = $args['start_date'] . ' 00:00:00';
+            $values[] = sanitize_text_field($args['start_date']) . ' 00:00:00';
         }
 
         if ($args['end_date']) {
             $where[] = 'visit_date <= %s';
-            $values[] = $args['end_date'] . ' 23:59:59';
+            $values[] = sanitize_text_field($args['end_date']) . ' 23:59:59';
         }
 
         if ($args['bot_name']) {
             $where[] = 'bot_name = %s';
-            $values[] = $args['bot_name'];
+            $values[] = sanitize_text_field($args['bot_name']);
         }
 
         if ($args['bot_category']) {
             $where[] = 'bot_category = %s';
-            $values[] = $args['bot_category'];
+            $values[] = sanitize_key($args['bot_category']);
         }
 
         $allowed_orderby = ['visit_date', 'bot_name', 'bot_category', 'url_visited'];
-        $orderby = in_array($args['orderby'], $allowed_orderby) ? $args['orderby'] : 'visit_date';
+        $orderby = in_array($args['orderby'], $allowed_orderby, true) ? $args['orderby'] : 'visit_date';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
 
-        $sql = "SELECT * FROM {$this->table_name} WHERE " . implode(' AND ', $where);
-        $sql .= " ORDER BY $orderby $order";
-        $sql .= " LIMIT %d OFFSET %d";
+        $table = esc_sql($this->table_name);
+        $sql = "SELECT * FROM `$table` WHERE " . implode(' AND ', $where);
+        $sql .= " ORDER BY `$orderby` $order";
+        $sql .= ' LIMIT %d OFFSET %d';
 
         $values[] = $args['limit'];
         $values[] = $args['offset'];
 
-        if (!empty($values)) {
-            $sql = $wpdb->prepare($sql, $values);
-        }
-
-        return $wpdb->get_results($sql);
+        return $wpdb->get_results($wpdb->prepare($sql, $values));
     }
 
     public function get_stats($start_date, $end_date) {
         global $wpdb;
 
+        $start_date = sanitize_text_field($start_date);
+        $end_date = sanitize_text_field($end_date);
+        $table = esc_sql($this->table_name);
+
         $stats = [];
 
-        $stats['total'] = $wpdb->get_var($wpdb->prepare(
-            "SELECT COUNT(*) FROM {$this->table_name} WHERE visit_date BETWEEN %s AND %s",
+        $stats['total'] = (int) $wpdb->get_var($wpdb->prepare(
+            "SELECT COUNT(*) FROM `$table` WHERE visit_date BETWEEN %s AND %s",
             $start_date . ' 00:00:00',
             $end_date . ' 23:59:59'
         ));
 
         $stats['by_category'] = $wpdb->get_results($wpdb->prepare(
             "SELECT bot_category, COUNT(*) as count 
-             FROM {$this->table_name} 
+             FROM `$table` 
              WHERE visit_date BETWEEN %s AND %s 
              GROUP BY bot_category 
              ORDER BY count DESC",
@@ -120,7 +127,7 @@ class GEO_Bot_Logger {
 
         $stats['by_bot'] = $wpdb->get_results($wpdb->prepare(
             "SELECT bot_name, bot_category, COUNT(*) as count 
-             FROM {$this->table_name} 
+             FROM `$table` 
              WHERE visit_date BETWEEN %s AND %s 
              GROUP BY bot_name, bot_category 
              ORDER BY count DESC 
@@ -131,7 +138,7 @@ class GEO_Bot_Logger {
 
         $stats['by_day'] = $wpdb->get_results($wpdb->prepare(
             "SELECT DATE(visit_date) as day, bot_category, COUNT(*) as count 
-             FROM {$this->table_name} 
+             FROM `$table` 
              WHERE visit_date BETWEEN %s AND %s 
              GROUP BY DATE(visit_date), bot_category 
              ORDER BY day ASC",
@@ -141,7 +148,7 @@ class GEO_Bot_Logger {
 
         $stats['top_urls'] = $wpdb->get_results($wpdb->prepare(
             "SELECT url_visited, COUNT(*) as count 
-             FROM {$this->table_name} 
+             FROM `$table` 
              WHERE visit_date BETWEEN %s AND %s 
              GROUP BY url_visited 
              ORDER BY count DESC 
@@ -155,13 +162,14 @@ class GEO_Bot_Logger {
 
     public function get_available_months() {
         global $wpdb;
+        $table = esc_sql($this->table_name);
 
         return $wpdb->get_results(
             "SELECT 
                 DATE_FORMAT(visit_date, '%Y-%m') as month_year,
                 DATE_FORMAT(visit_date, '%M %Y') as label,
                 COUNT(*) as count
-             FROM {$this->table_name} 
+             FROM `$table` 
              GROUP BY DATE_FORMAT(visit_date, '%Y-%m')
              ORDER BY month_year DESC"
         );
@@ -169,29 +177,88 @@ class GEO_Bot_Logger {
 
     public function get_database_size() {
         global $wpdb;
+        $table = esc_sql($this->table_name);
 
-        $size = $wpdb->get_row(
-            "SELECT 
-                COUNT(*) as total_rows,
-                ROUND(((data_length + index_length) / 1024 / 1024), 2) as size_mb
+        $total_rows = (int) $wpdb->get_var("SELECT COUNT(*) FROM `$table`");
+
+        $size_result = $wpdb->get_row($wpdb->prepare(
+            "SELECT ROUND(((data_length + index_length) / 1024 / 1024), 2) as size_mb
              FROM information_schema.TABLES 
-             WHERE table_schema = DATABASE() 
-             AND table_name = '{$this->table_name}'"
-        );
+             WHERE table_schema = %s 
+             AND table_name = %s",
+            DB_NAME,
+            $this->table_name
+        ));
 
-        return $size;
+        return (object) [
+            'total_rows' => $total_rows,
+            'size_mb' => $size_result ? $size_result->size_mb : 0,
+        ];
     }
 
     public function purge_month($year, $month) {
         global $wpdb;
 
+        $year = absint($year);
+        $month = str_pad(absint($month), 2, '0', STR_PAD_LEFT);
+
+        if ($year < 2000 || $year > 2100 || $month < 1 || $month > 12) {
+            return 0;
+        }
+
         $start_date = "$year-$month-01 00:00:00";
-        $end_date = date('Y-m-t 23:59:59', strtotime($start_date));
+        $end_date = gmdate('Y-m-t 23:59:59', strtotime($start_date));
+        $table = esc_sql($this->table_name);
 
         return $wpdb->query($wpdb->prepare(
-            "DELETE FROM {$this->table_name} WHERE visit_date BETWEEN %s AND %s",
+            "DELETE FROM `$table` WHERE visit_date BETWEEN %s AND %s",
             $start_date,
             $end_date
         ));
+    }
+
+    public function get_count($args = []) {
+        global $wpdb;
+
+        $defaults = [
+            'start_date' => '',
+            'end_date' => '',
+            'bot_name' => '',
+            'bot_category' => '',
+        ];
+
+        $args = wp_parse_args($args, $defaults);
+        $table = esc_sql($this->table_name);
+
+        $where = ['1=1'];
+        $values = [];
+
+        if ($args['start_date']) {
+            $where[] = 'visit_date >= %s';
+            $values[] = sanitize_text_field($args['start_date']) . ' 00:00:00';
+        }
+
+        if ($args['end_date']) {
+            $where[] = 'visit_date <= %s';
+            $values[] = sanitize_text_field($args['end_date']) . ' 23:59:59';
+        }
+
+        if ($args['bot_name']) {
+            $where[] = 'bot_name = %s';
+            $values[] = sanitize_text_field($args['bot_name']);
+        }
+
+        if ($args['bot_category']) {
+            $where[] = 'bot_category = %s';
+            $values[] = sanitize_key($args['bot_category']);
+        }
+
+        $sql = "SELECT COUNT(*) FROM `$table` WHERE " . implode(' AND ', $where);
+
+        if (!empty($values)) {
+            $sql = $wpdb->prepare($sql, $values);
+        }
+
+        return (int) $wpdb->get_var($sql);
     }
 }
