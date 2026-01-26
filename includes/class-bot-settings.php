@@ -18,7 +18,7 @@ class GEO_Bot_Settings {
     }
 
     public function enqueue_scripts($hook) {
-        if ($hook !== 'geo-bot-monitor_page_geo-bot-settings') {
+        if (strpos($hook, 'geo-bot-settings') === false) {
             return;
         }
 
@@ -69,8 +69,7 @@ class GEO_Bot_Settings {
                                            id="geo_bot_monitor_api_key" 
                                            name="geo_bot_monitor_api_key" 
                                            value="<?php echo esc_attr($api_key); ?>" 
-                                           class="regular-text code"
-                                           readonly>
+                                           class="regular-text code">
                                     <button type="button" id="generate-api-key" class="button" data-nonce="<?php echo esc_attr($nonce); ?>">
                                         <?php esc_html_e('Générer une nouvelle clé', 'geo-bot-monitor'); ?>
                                     </button>
