@@ -22,6 +22,8 @@ require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-detector.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-logger.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-dashboard.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-exporter.php';
+require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-api.php';
+require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-settings.php';
 
 register_activation_hook(__FILE__, 'geo_bot_monitor_activate');
 register_deactivation_hook(__FILE__, 'geo_bot_monitor_deactivate');
@@ -54,6 +56,9 @@ function geo_bot_monitor_activate() {
 
 function geo_bot_monitor_deactivate() {
 }
+
+new GEO_Bot_API();
+new GEO_Bot_Settings();
 
 add_action('init', function() {
     $detector = new GEO_Bot_Detector();
@@ -111,6 +116,15 @@ add_action('admin_menu', function() {
         'geo-bot-maintenance',
         'geo_bot_render_maintenance'
     );
+
+    add_submenu_page(
+        'geo-bot-monitor',
+        __('Paramètres API', 'geo-bot-monitor'),
+        __('API', 'geo-bot-monitor'),
+        'manage_options',
+        'geo-bot-settings',
+        'geo_bot_render_settings'
+    );
 });
 
 add_action('admin_enqueue_scripts', function($hook) {
@@ -160,6 +174,11 @@ function geo_bot_render_export() {
 function geo_bot_render_maintenance() {
     $dashboard = new GEO_Bot_Dashboard();
     $dashboard->render_maintenance();
+}
+
+function geo_bot_render_settings() {
+    $settings = new GEO_Bot_Settings();
+    $settings->render();
 }
 
 add_action('wp_ajax_geo_bot_export', function() {
