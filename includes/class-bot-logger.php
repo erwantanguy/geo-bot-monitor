@@ -44,6 +44,36 @@ class GEO_Bot_Logger {
         return 0;
     }
 
+    private function build_where_clause($args) {
+        $where = ['1=1'];
+        $values = [];
+
+        if (!empty($args['start_date'])) {
+            $where[] = 'visit_date >= %s';
+            $values[] = sanitize_text_field($args['start_date']) . ' 00:00:00';
+        }
+
+        if (!empty($args['end_date'])) {
+            $where[] = 'visit_date <= %s';
+            $values[] = sanitize_text_field($args['end_date']) . ' 23:59:59';
+        }
+
+        if (!empty($args['bot_name'])) {
+            $where[] = 'bot_name = %s';
+            $values[] = sanitize_text_field($args['bot_name']);
+        }
+
+        if (!empty($args['bot_category'])) {
+            $where[] = 'bot_category = %s';
+            $values[] = sanitize_key($args['bot_category']);
+        }
+
+        return [
+            'clause' => implode(' AND ', $where),
+            'values' => $values,
+        ];
+    }
+
     public function get_visits($args = []) {
         global $wpdb;
 
@@ -62,38 +92,18 @@ class GEO_Bot_Logger {
         $args['limit'] = min(absint($args['limit']), 10000);
         $args['offset'] = absint($args['offset']);
 
-        $where = ['1=1'];
-        $values = [];
-
-        if ($args['start_date']) {
-            $where[] = 'visit_date >= %s';
-            $values[] = sanitize_text_field($args['start_date']) . ' 00:00:00';
-        }
-
-        if ($args['end_date']) {
-            $where[] = 'visit_date <= %s';
-            $values[] = sanitize_text_field($args['end_date']) . ' 23:59:59';
-        }
-
-        if ($args['bot_name']) {
-            $where[] = 'bot_name = %s';
-            $values[] = sanitize_text_field($args['bot_name']);
-        }
-
-        if ($args['bot_category']) {
-            $where[] = 'bot_category = %s';
-            $values[] = sanitize_key($args['bot_category']);
-        }
+        $where_data = $this->build_where_clause($args);
 
         $allowed_orderby = ['visit_date', 'bot_name', 'bot_category', 'url_visited'];
         $orderby = in_array($args['orderby'], $allowed_orderby, true) ? $args['orderby'] : 'visit_date';
         $order = strtoupper($args['order']) === 'ASC' ? 'ASC' : 'DESC';
 
         $table = esc_sql($this->table_name);
-        $sql = "SELECT * FROM `$table` WHERE " . implode(' AND ', $where);
+        $sql = "SELECT * FROM `$table` WHERE " . $where_data['clause'];
         $sql .= " ORDER BY `$orderby` $order";
         $sql .= ' LIMIT %d OFFSET %d';
 
+        $values = $where_data['values'];
         $values[] = $args['limit'];
         $values[] = $args['offset'];
 
@@ -229,34 +239,12 @@ class GEO_Bot_Logger {
 
         $args = wp_parse_args($args, $defaults);
         $table = esc_sql($this->table_name);
+        $where_data = $this->build_where_clause($args);
 
-        $where = ['1=1'];
-        $values = [];
+        $sql = "SELECT COUNT(*) FROM `$table` WHERE " . $where_data['clause'];
 
-        if ($args['start_date']) {
-            $where[] = 'visit_date >= %s';
-            $values[] = sanitize_text_field($args['start_date']) . ' 00:00:00';
-        }
-
-        if ($args['end_date']) {
-            $where[] = 'visit_date <= %s';
-            $values[] = sanitize_text_field($args['end_date']) . ' 23:59:59';
-        }
-
-        if ($args['bot_name']) {
-            $where[] = 'bot_name = %s';
-            $values[] = sanitize_text_field($args['bot_name']);
-        }
-
-        if ($args['bot_category']) {
-            $where[] = 'bot_category = %s';
-            $values[] = sanitize_key($args['bot_category']);
-        }
-
-        $sql = "SELECT COUNT(*) FROM `$table` WHERE " . implode(' AND ', $where);
-
-        if (!empty($values)) {
-            $sql = $wpdb->prepare($sql, $values);
+        if (!empty($where_data['values'])) {
+            $sql = $wpdb->prepare($sql, $where_data['values']);
         }
 
         return (int) $wpdb->get_var($sql);

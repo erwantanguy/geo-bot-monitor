@@ -7,12 +7,37 @@ class GEO_Bot_Settings {
 
     public function __construct() {
         add_action('admin_init', [$this, 'register_settings']);
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_scripts']);
     }
 
     public function register_settings() {
         register_setting('geo_bot_monitor_settings', 'geo_bot_monitor_api_key', [
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
+        ]);
+    }
+
+    public function enqueue_scripts($hook) {
+        if ($hook !== 'geo-bot-monitor_page_geo-bot-settings') {
+            return;
+        }
+
+        wp_enqueue_script(
+            'geo-bot-settings',
+            GEO_BOT_MONITOR_URL . 'assets/js/settings.js',
+            ['jquery'],
+            GEO_BOT_MONITOR_VERSION,
+            true
+        );
+
+        wp_localize_script('geo-bot-settings', 'geoBotSettings', [
+            'ajaxUrl' => admin_url('admin-ajax.php'),
+            'generating' => __('Génération...', 'geo-bot-monitor'),
+            'generateNew' => __('Générer une nouvelle clé', 'geo-bot-monitor'),
+            'errorGenerate' => __('Erreur lors de la génération', 'geo-bot-monitor'),
+            'errorConnection' => __('Erreur de connexion', 'geo-bot-monitor'),
+            'errorCopy' => __('Erreur lors de la copie', 'geo-bot-monitor'),
+            'copied' => __('Copié !', 'geo-bot-monitor'),
         ]);
     }
 
@@ -208,52 +233,6 @@ const data = await response.json();</pre>
                 line-height: 1.5;
             }
         </style>
-
-        <script>
-        jQuery(document).ready(function($) {
-            $('#generate-api-key').on('click', function() {
-                var btn = $(this);
-                var nonce = btn.data('nonce');
-                
-                btn.prop('disabled', true).text('<?php echo esc_js(__('Génération...', 'geo-bot-monitor')); ?>');
-                
-                $.ajax({
-                    url: ajaxurl,
-                    type: 'POST',
-                    data: {
-                        action: 'geo_bot_generate_api_key',
-                        nonce: nonce
-                    },
-                    success: function(response) {
-                        if (response.success) {
-                            $('#geo_bot_monitor_api_key').val(response.data.key);
-                            $('#copy-api-key').prop('disabled', false);
-                        } else {
-                            alert('<?php echo esc_js(__('Erreur lors de la génération', 'geo-bot-monitor')); ?>');
-                        }
-                    },
-                    error: function() {
-                        alert('<?php echo esc_js(__('Erreur de connexion', 'geo-bot-monitor')); ?>');
-                    },
-                    complete: function() {
-                        btn.prop('disabled', false).text('<?php echo esc_js(__('Générer une nouvelle clé', 'geo-bot-monitor')); ?>');
-                    }
-                });
-            });
-
-            $('#copy-api-key').on('click', function() {
-                var key = $('#geo_bot_monitor_api_key').val();
-                navigator.clipboard.writeText(key).then(function() {
-                    var btn = $('#copy-api-key');
-                    var originalText = btn.text();
-                    btn.text('<?php echo esc_js(__('Copié !', 'geo-bot-monitor')); ?>');
-                    setTimeout(function() {
-                        btn.text(originalText);
-                    }, 2000);
-                });
-            });
-        });
-        </script>
         <?php
     }
 }
