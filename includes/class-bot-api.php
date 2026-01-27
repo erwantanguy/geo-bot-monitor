@@ -11,6 +11,18 @@ class GEO_Bot_API {
     public function __construct() {
         $this->logger = new GEO_Bot_Logger();
         add_action('rest_api_init', [$this, 'register_routes']);
+        add_action('rest_api_init', [$this, 'add_cors_headers']);
+    }
+
+    public function add_cors_headers() {
+        remove_filter('rest_pre_serve_request', 'rest_send_cors_headers');
+        add_filter('rest_pre_serve_request', function($value) {
+            header('Access-Control-Allow-Origin: *');
+            header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+            header('Access-Control-Allow-Headers: Authorization, Content-Type, X-GEO-Bot-API-Key');
+            header('Access-Control-Allow-Credentials: true');
+            return $value;
+        });
     }
 
     public function register_routes() {

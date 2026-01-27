@@ -75,6 +75,11 @@ add_action('init', function() {
         return;
     }
 
+    $request_uri = isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '';
+    if (strpos($request_uri, '/wp-json/') !== false || strpos($request_uri, 'rest_route=') !== false) {
+        return;
+    }
+
     $detector = new GEO_Bot_Detector();
     $bot_info = $detector->detect();
     
