@@ -18,6 +18,10 @@ function geo_bot_get_signatures() {
             'Exabot' => ['Exabot'],
             'facebot' => ['facebot', 'facebookexternalhit'],
             'ia_archiver' => ['ia_archiver'],
+        ],
+        'seo_tools' => [
+            'MozBot' => ['rogerbot', 'DotBot/1.0; http://www.opensiteexplorer.org', 'Moz.com'],
+            'Moz' => ['rogerbot', 'Moz'],
             'MJ12bot' => ['MJ12bot'],
             'AhrefsBot' => ['AhrefsBot'],
             'SemrushBot' => ['SemrushBot'],
@@ -26,7 +30,9 @@ function geo_bot_get_signatures() {
             'SEOkicks' => ['SEOkicks'],
             'Seobility' => ['Seobility'],
             'Sistrix' => ['SISTRIX'],
-            'Moz' => ['rogerbot', 'Moz'],
+            'Majestic' => ['MJ12bot', 'Majestic'],
+            'Serpstat' => ['SerpstatBot'],
+            'Ubersuggest' => ['Ubersuggest'],
         ],
         'geo_ai' => [
             'GPTBot' => ['GPTBot'],
@@ -48,6 +54,8 @@ function geo_bot_get_signatures() {
             'ImagesiftBot' => ['ImagesiftBot'],
             'Omgili' => ['omgili', 'omgilibot'],
             'Webz.io' => ['webzio'],
+            'AI2Bot' => ['AI2Bot'],
+            'Applebot-Extended' => ['Applebot-Extended'],
         ],
         'social' => [
             'Twitterbot' => ['Twitterbot'],
@@ -58,6 +66,32 @@ function geo_bot_get_signatures() {
             'WhatsApp' => ['WhatsApp'],
             'Discordbot' => ['Discordbot'],
             'Snapchat' => ['Snapchat'],
+        ],
+        'podcast' => [
+            'Podchaser' => ['Podchaser'],
+            'Podplay' => ['Podplay'],
+            'PodcastAddict' => ['PodcastAddict', 'Podcast Addict'],
+            'Overcast' => ['Overcast'],
+            'Castro' => ['Castro'],
+            'Pocket Casts' => ['PocketCasts', 'Pocket Casts'],
+            'Spotify-Podcast' => ['Spotify'],
+            'Apple-Podcasts' => ['AppleCoreMedia', 'iTunes'],
+            'Google-Podcasts' => ['GooglePodcasts', 'Google-Podcast'],
+            'Deezer' => ['Deezer'],
+            'Castbox' => ['Castbox'],
+            'Stitcher' => ['Stitcher'],
+            'iHeartRadio' => ['iHeartRadio'],
+            'TuneIn' => ['TuneIn'],
+            'Podcast Republic' => ['Podcast Republic'],
+            'Podbean' => ['Podbean'],
+            'Audioboom' => ['Audioboom'],
+            'Spreaker' => ['Spreaker'],
+        ],
+        'internal' => [
+            'WordPress-Cron' => ['WordPress/'],
+            'GEO-Audit-Bot' => ['GEO-Audit-Bot'],
+            'WP-REST' => ['wp-rest'],
+            'Jetpack' => ['Jetpack'],
         ],
         'other' => [
             'Uptimerobot' => ['UptimeRobot'],
@@ -71,6 +105,11 @@ function geo_bot_get_signatures() {
             'Lighthouse' => ['Chrome-Lighthouse'],
             'Archive.org' => ['archive.org_bot'],
             'Feedfetcher' => ['Feedfetcher'],
+            'curl' => ['curl/'],
+            'wget' => ['Wget/'],
+            'Python-Requests' => ['python-requests'],
+            'Axios' => ['axios/'],
+            'Node-Fetch' => ['node-fetch'],
         ]
     ];
 }
@@ -78,8 +117,11 @@ function geo_bot_get_signatures() {
 function geo_bot_get_category_labels() {
     return [
         'seo' => __('SEO', 'geo-bot-monitor'),
+        'seo_tools' => __('Outils SEO', 'geo-bot-monitor'),
         'geo_ai' => __('GEO / IA', 'geo-bot-monitor'),
         'social' => __('Réseaux sociaux', 'geo-bot-monitor'),
+        'podcast' => __('Podcast', 'geo-bot-monitor'),
+        'internal' => __('Interne', 'geo-bot-monitor'),
         'other' => __('Autres', 'geo-bot-monitor'),
     ];
 }
@@ -87,8 +129,58 @@ function geo_bot_get_category_labels() {
 function geo_bot_get_category_colors() {
     return [
         'seo' => '#4285f4',
+        'seo_tools' => '#9c27b0',
         'geo_ai' => '#ea4335',
         'social' => '#fbbc05',
+        'podcast' => '#ff5722',
+        'internal' => '#607d8b',
         'other' => '#34a853',
+    ];
+}
+
+function geo_bot_get_category_recommendations() {
+    return [
+        'seo' => [
+            'status' => 'keep',
+            'icon' => '✅',
+            'label' => __('Garder', 'geo-bot-monitor'),
+            'description' => __('Essentiel pour le référencement', 'geo-bot-monitor'),
+        ],
+        'seo_tools' => [
+            'status' => 'evaluate',
+            'icon' => '⚠️',
+            'label' => __('À évaluer', 'geo-bot-monitor'),
+            'description' => __('Utile si vous utilisez ces outils, sinon peut être bloqué', 'geo-bot-monitor'),
+        ],
+        'geo_ai' => [
+            'status' => 'evaluate',
+            'icon' => '🔶',
+            'label' => __('Selon stratégie', 'geo-bot-monitor'),
+            'description' => __('Décidez si vous voulez être indexé par les IA', 'geo-bot-monitor'),
+        ],
+        'social' => [
+            'status' => 'keep',
+            'icon' => '✅',
+            'label' => __('Garder', 'geo-bot-monitor'),
+            'description' => __('Nécessaire pour les previews de liens', 'geo-bot-monitor'),
+        ],
+        'podcast' => [
+            'status' => 'keep',
+            'icon' => '✅',
+            'label' => __('Garder', 'geo-bot-monitor'),
+            'description' => __('Essentiel pour la diffusion des podcasts', 'geo-bot-monitor'),
+        ],
+        'internal' => [
+            'status' => 'keep',
+            'icon' => '✅',
+            'label' => __('Garder', 'geo-bot-monitor'),
+            'description' => __('Requêtes internes WordPress', 'geo-bot-monitor'),
+        ],
+        'other' => [
+            'status' => 'evaluate',
+            'icon' => '❓',
+            'label' => __('À analyser', 'geo-bot-monitor'),
+            'description' => __('Vérifier l\'utilité au cas par cas', 'geo-bot-monitor'),
+        ],
     ];
 }

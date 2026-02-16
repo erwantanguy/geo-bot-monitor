@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('GEO_BOT_MONITOR_VERSION', '1.0.1');
+define('GEO_BOT_MONITOR_VERSION', '1.1.0');
 define('GEO_BOT_MONITOR_PATH', plugin_dir_path(__FILE__));
 define('GEO_BOT_MONITOR_URL', plugin_dir_url(__FILE__));
 
@@ -24,6 +24,9 @@ require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-dashboard.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-exporter.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-api.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-settings.php';
+require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-blocker.php';
+
+GEO_Bot_Blocker::init_hooks();
 
 register_activation_hook(__FILE__, 'geo_bot_monitor_activate');
 register_deactivation_hook(__FILE__, 'geo_bot_monitor_deactivate');
@@ -129,6 +132,15 @@ add_action('admin_menu', function() {
 
     add_submenu_page(
         'geo-bot-monitor',
+        __('Bloquer les bots', 'geo-bot-monitor'),
+        __('Blocage', 'geo-bot-monitor'),
+        'manage_options',
+        'geo-bot-block',
+        'geo_bot_render_block'
+    );
+
+    add_submenu_page(
+        'geo-bot-monitor',
         __('Maintenance', 'geo-bot-monitor'),
         __('Maintenance', 'geo-bot-monitor'),
         'manage_options',
@@ -198,6 +210,11 @@ function geo_bot_render_maintenance() {
 function geo_bot_render_settings() {
     $settings = new GEO_Bot_Settings();
     $settings->render();
+}
+
+function geo_bot_render_block() {
+    $blocker = new GEO_Bot_Blocker();
+    $blocker->render_page();
 }
 
 add_action('wp_ajax_geo_bot_export', function() {
@@ -291,4 +308,40 @@ add_action('wp_ajax_geo_bot_generate_api_key', function() {
     $new_key = 'gbm_' . wp_generate_password(48, false, false);
     
     wp_send_json_success(['key' => $new_key]);
+});
+
+add_action('wp_ajax_geo_bot_generate_block_code', function() {
+    GEO_Bot_Blocker::ajax_generate_code();
+});
+
+add_action('wp_ajax_geo_bot_get_bot_code', function() {
+    GEO_Bot_Blocker::ajax_get_bot_code();
+});
+
+add_action('wp_ajax_geo_bot_sync_robots', function() {
+    GEO_Bot_Blocker::ajax_sync_robots();
+});
+
+add_action('wp_ajax_geo_bot_save_blocked', function() {
+    if (!current_user_can('manage_options')) {
+        wp_die(esc_html__('Accès refusé', 'geo-bot-monitor'));
+    }
+
+    check_ajax_referer('geo_bot_block', 'nonce');
+
+    $bot_name = isset($_POST['bot']) ? sanitize_text_field(wp_unslash($_POST['bot'])) : '';
+    $action_type = isset($_POST['block_action']) ? sanitize_text_field(wp_unslash($_POST['block_action'])) : 'add';
+    $methods = isset($_POST['methods']) ? array_map('sanitize_text_field', wp_unslash($_POST['methods'])) : ['robots'];
+
+    if (empty($bot_name)) {
+        wp_send_json_error(['message' => __('Bot non spécifié', 'geo-bot-monitor')]);
+    }
+
+    if ($action_type === 'add') {
+        GEO_Bot_Blocker::add_blocked_bot($bot_name, $methods);
+        wp_send_json_success(['message' => sprintf(__('%s ajouté à la liste de blocage', 'geo-bot-monitor'), $bot_name)]);
+    } else {
+        GEO_Bot_Blocker::remove_blocked_bot($bot_name);
+        wp_send_json_success(['message' => sprintf(__('%s retiré de la liste de blocage', 'geo-bot-monitor'), $bot_name)]);
+    }
 });
