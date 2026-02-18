@@ -322,6 +322,22 @@ add_action('wp_ajax_geo_bot_sync_robots', function() {
     GEO_Bot_Blocker::ajax_sync_robots();
 });
 
+add_action('wp_ajax_geo_bot_apply_robots', function() {
+    GEO_Bot_Blocker::ajax_apply_robots_block();
+});
+
+add_action('wp_ajax_geo_bot_robots_status', function() {
+    GEO_Bot_Blocker::ajax_get_robots_status();
+});
+
+add_action('wp_ajax_geo_bot_apply_llms', function() {
+    GEO_Bot_Blocker::ajax_apply_llms_block();
+});
+
+add_action('wp_ajax_geo_bot_llms_status', function() {
+    GEO_Bot_Blocker::ajax_get_llms_status();
+});
+
 add_action('wp_ajax_geo_bot_save_blocked', function() {
     if (!current_user_can('manage_options')) {
         wp_die(esc_html__('Accès refusé', 'geo-bot-monitor'));

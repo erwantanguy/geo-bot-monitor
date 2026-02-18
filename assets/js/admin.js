@@ -441,7 +441,7 @@
                 type: 'POST',
                 data: {
                     action: 'geo_bot_sync_robots',
-                    nonce: geoBotAdmin.nonces.block
+                    nonce: $('#geo_bot_block_nonce').val()
                 },
                 success: function(response) {
                     if (response.success) {
@@ -462,6 +462,91 @@
                     $btn.prop('disabled', false).find('.dashicons').removeClass('dashicons-update-spin');
                 }
             });
+        });
+
+        $('#geo-bot-apply-robots-btn').on('click', function() {
+            var selectedBots = [];
+            $('input[name="bots[]"]:checked').each(function() {
+                selectedBots.push($(this).val());
+            });
+
+            if (selectedBots.length === 0) {
+                showNotice('Veuillez sélectionner au moins un bot à bloquer', 'warning');
+                return;
+            }
+
+            if (!confirm('Voulez-vous vraiment bloquer ' + selectedBots.length + ' bot(s) dans le fichier robots.txt ?')) {
+                return;
+            }
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).find('.dashicons').addClass('dashicons-update-spin');
+
+            $.ajax({
+                url: ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'geo_bot_apply_robots',
+                    nonce: $('#geo_bot_block_nonce').val(),
+                    bots: selectedBots
+                },
+                success: function(response) {
+                    if (response.success) {
+                        showNotice(response.data.message, 'success');
+                        setTimeout(function() {
+                            location.reload();
+                        }, 1500);
+                    } else {
+                        if (response.data.can_download) {
+                            showNotice(response.data.message, 'warning');
+                            showDownloadModal(response.data.content, selectedBots);
+                        } else {
+                            showNotice(response.data.message, 'error');
+                        }
+                    }
+                },
+                error: function() {
+                    showNotice('Erreur de communication avec le serveur', 'error');
+                },
+                complete: function() {
+                    $btn.prop('disabled', false).find('.dashicons').removeClass('dashicons-update-spin');
+                }
+            });
+        });
+    }
+
+    function showDownloadModal(content, bots) {
+        var $modal = $('<div class="geo-bot-download-modal">' +
+            '<div class="geo-bot-download-modal-content">' +
+            '<h3><span class="dashicons dashicons-download"></span> Télécharger le fichier robots.txt</h3>' +
+            '<p>L\'écriture automatique n\'est pas disponible. Téléchargez le fichier et envoyez-le manuellement à la racine de votre site via FTP.</p>' +
+            '<div class="geo-bot-code-block"><pre>' + escapeHtml(content) + '</pre></div>' +
+            '<div class="geo-bot-download-modal-actions">' +
+            '<button type="button" class="button" id="modal-copy-robots">Copier</button>' +
+            '<button type="button" class="button button-primary" id="modal-download-robots">Télécharger</button>' +
+            '<button type="button" class="button" id="modal-close-download">Fermer</button>' +
+            '</div>' +
+            '</div>' +
+            '</div>');
+
+        $('body').append($modal);
+
+        $('#modal-copy-robots').on('click', function() {
+            copyToClipboard(content, $(this));
+        });
+
+        $('#modal-download-robots').on('click', function() {
+            downloadFile('robots.txt', content);
+        });
+
+        $('#modal-close-download, .geo-bot-download-modal').on('click', function(e) {
+            if (e.target === this || $(this).attr('id') === 'modal-close-download') {
+                $modal.remove();
+            }
+        });
+
+        $modal.find('.geo-bot-download-modal-content').on('click', function(e) {
+            e.stopPropagation();
         });
     }
 

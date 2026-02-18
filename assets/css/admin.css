@@ -530,6 +530,128 @@
     to { transform: rotate(360deg); }
 }
 
+.geo-bot-files-status {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.geo-bot-file-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 15px;
+    background: #f8f9fa;
+    border-radius: 6px;
+    border: 1px solid #e9ecef;
+}
+
+.geo-bot-file-status strong {
+    min-width: 80px;
+}
+
+.geo-bot-robots-status {
+    margin-bottom: 15px;
+}
+
+.geo-bot-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 500;
+}
+
+.geo-bot-status-badge .dashicons {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+}
+
+.geo-bot-status-badge-success {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.geo-bot-status-badge-warning {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.geo-bot-status-badge-info {
+    background: #d1ecf1;
+    color: #0c5460;
+    border: 1px solid #bee5eb;
+}
+
+.geo-bot-generator-buttons {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+
+.geo-bot-generator-buttons .button-hero {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.geo-bot-generator-buttons .button-hero .dashicons {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+}
+
+.geo-bot-download-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 100001;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.geo-bot-download-modal-content {
+    background: #fff;
+    padding: 25px;
+    border-radius: 8px;
+    max-width: 700px;
+    max-height: 80vh;
+    overflow-y: auto;
+    width: 90%;
+}
+
+.geo-bot-download-modal-content h3 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 0;
+    margin-bottom: 15px;
+}
+
+.geo-bot-download-modal-content .geo-bot-code-block {
+    max-height: 300px;
+    overflow-y: auto;
+    margin: 15px 0;
+}
+
+.geo-bot-download-modal-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 15px;
+}
+
 .geo-bot-quick-block {
     padding: 4px 8px !important;
 }

@@ -330,6 +330,53 @@ class GEO_Bot_Blocker {
                 <div class="geo-bot-block-generator">
                     <h2><?php esc_html_e('Générer les fichiers', 'geo-bot-monitor'); ?></h2>
                     
+                    <?php 
+                    $robots_status = self::get_robots_txt_status();
+                    $llms_status = self::get_llms_txt_status();
+                    ?>
+                    
+                    <div class="geo-bot-files-status">
+                        <div class="geo-bot-file-status">
+                            <strong>robots.txt</strong>
+                            <?php if ($robots_status['can_auto_write']): ?>
+                                <span class="geo-bot-status-badge geo-bot-status-badge-success">
+                                    <span class="dashicons dashicons-yes-alt"></span>
+                                    <?php esc_html_e('Écriture auto', 'geo-bot-monitor'); ?>
+                                </span>
+                            <?php elseif ($robots_status['managed_by_seo']): ?>
+                                <span class="geo-bot-status-badge geo-bot-status-badge-warning">
+                                    <span class="dashicons dashicons-warning"></span>
+                                    <?php echo esc_html($robots_status['seo_plugin']); ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="geo-bot-status-badge geo-bot-status-badge-info">
+                                    <span class="dashicons dashicons-download"></span>
+                                    <?php esc_html_e('Manuel', 'geo-bot-monitor'); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                        
+                        <div class="geo-bot-file-status">
+                            <strong>llms.txt</strong>
+                            <?php if ($llms_status['geo_authority_active']): ?>
+                                <span class="geo-bot-status-badge geo-bot-status-badge-success">
+                                    <span class="dashicons dashicons-admin-plugins"></span>
+                                    <?php esc_html_e('Via GEO Authority Suite', 'geo-bot-monitor'); ?>
+                                </span>
+                            <?php elseif ($llms_status['writable']): ?>
+                                <span class="geo-bot-status-badge geo-bot-status-badge-success">
+                                    <span class="dashicons dashicons-yes-alt"></span>
+                                    <?php esc_html_e('Écriture auto', 'geo-bot-monitor'); ?>
+                                </span>
+                            <?php else: ?>
+                                <span class="geo-bot-status-badge geo-bot-status-badge-info">
+                                    <span class="dashicons dashicons-download"></span>
+                                    <?php esc_html_e('Manuel', 'geo-bot-monitor'); ?>
+                                </span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+
                     <div class="geo-bot-generator-options">
                         <label>
                             <input type="checkbox" id="gen-robots" checked>
@@ -345,9 +392,19 @@ class GEO_Bot_Blocker {
                         </label>
                     </div>
 
-                    <button type="button" id="geo-bot-generate-btn" class="button button-primary button-hero">
-                        <?php esc_html_e('Générer le code', 'geo-bot-monitor'); ?>
-                    </button>
+                    <div class="geo-bot-generator-buttons">
+                        <button type="button" id="geo-bot-generate-btn" class="button button-secondary button-hero">
+                            <span class="dashicons dashicons-editor-code"></span>
+                            <?php esc_html_e('Générer le code', 'geo-bot-monitor'); ?>
+                        </button>
+                        
+                        <?php if ($robots_status['can_auto_write']): ?>
+                        <button type="button" id="geo-bot-apply-robots-btn" class="button button-primary button-hero">
+                            <span class="dashicons dashicons-saved"></span>
+                            <?php esc_html_e('Appliquer au robots.txt', 'geo-bot-monitor'); ?>
+                        </button>
+                        <?php endif; ?>
+                    </div>
 
                     <div id="geo-bot-generated-code" style="display: none;">
                         <div class="geo-bot-code-section" id="robots-section">
@@ -646,5 +703,413 @@ class GEO_Bot_Blocker {
             'synced' => $synced,
             'robots_content' => $blocked_in_robots,
         ]);
+    }
+
+    public static function has_seo_plugin_managing_robots() {
+        $active_plugins = apply_filters('active_plugins', get_option('active_plugins', []));
+
+        $yoast_premium = in_array('wordpress-seo-premium/wp-seo-premium.php', $active_plugins, true);
+        $seopress_pro = in_array('wp-seopress-pro/seopress-pro.php', $active_plugins, true);
+        $rankmath_pro = in_array('seo-by-rank-math-pro/rank-math-pro.php', $active_plugins, true);
+        $aioseo_pro = in_array('all-in-one-seo-pack-pro/all_in_one_seo_pack.php', $active_plugins, true);
+
+        if ($yoast_premium || $seopress_pro || $rankmath_pro || $aioseo_pro) {
+            $plugin_name = '';
+            if ($yoast_premium) $plugin_name = 'Yoast SEO Premium';
+            elseif ($seopress_pro) $plugin_name = 'SEOPress Pro';
+            elseif ($rankmath_pro) $plugin_name = 'Rank Math Pro';
+            elseif ($aioseo_pro) $plugin_name = 'All in One SEO Pro';
+
+            return [
+                'managed' => true,
+                'plugin' => $plugin_name,
+            ];
+        }
+
+        return ['managed' => false, 'plugin' => ''];
+    }
+
+    public static function can_write_robots_txt() {
+        $robots_path = self::get_robots_txt_path();
+
+        if (file_exists($robots_path)) {
+            return is_writable($robots_path);
+        }
+
+        return is_writable(ABSPATH);
+    }
+
+    public static function write_robots_txt($content) {
+        $robots_path = self::get_robots_txt_path();
+
+        if (!self::can_write_robots_txt()) {
+            return [
+                'success' => false,
+                'error' => __('Permissions insuffisantes pour ecrire le fichier robots.txt', 'geo-bot-monitor'),
+            ];
+        }
+
+        $seo_check = self::has_seo_plugin_managing_robots();
+        if ($seo_check['managed']) {
+            return [
+                'success' => false,
+                'error' => sprintf(
+                    __('%s gere le robots.txt. Utilisez ses parametres pour bloquer les bots.', 'geo-bot-monitor'),
+                    $seo_check['plugin']
+                ),
+                'plugin' => $seo_check['plugin'],
+            ];
+        }
+
+        $result = file_put_contents($robots_path, $content);
+
+        if ($result === false) {
+            return [
+                'success' => false,
+                'error' => __('Erreur lors de lecriture du fichier robots.txt', 'geo-bot-monitor'),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'path' => $robots_path,
+            'bytes' => $result,
+        ];
+    }
+
+    public static function update_robots_txt_with_blocks($bots) {
+        $robots_path = self::get_robots_txt_path();
+        $existing_content = '';
+
+        if (file_exists($robots_path)) {
+            $existing_content = file_get_contents($robots_path);
+        }
+
+        $marker_start = "# BEGIN GEO Bot Monitor";
+        $marker_end = "# END GEO Bot Monitor";
+
+        if (strpos($existing_content, $marker_start) !== false) {
+            $pattern = '/' . preg_quote($marker_start, '/') . '.*?' . preg_quote($marker_end, '/') . '\s*/s';
+            $existing_content = preg_replace($pattern, '', $existing_content);
+        }
+
+        $block_rules = $marker_start . "\n";
+        $block_rules .= "# Regles de blocage generees le " . gmdate('Y-m-d H:i:s') . "\n\n";
+
+        foreach ((array) $bots as $bot) {
+            $user_agent = self::get_user_agent($bot);
+            $block_rules .= "User-agent: $user_agent\n";
+            $block_rules .= "Disallow: /\n\n";
+        }
+
+        $block_rules .= $marker_end . "\n";
+
+        $new_content = trim($existing_content) . "\n\n" . $block_rules;
+        $new_content = preg_replace("/\n{3,}/", "\n\n", $new_content);
+
+        return self::write_robots_txt(trim($new_content) . "\n");
+    }
+
+    public static function get_robots_txt_status() {
+        $robots_path = self::get_robots_txt_path();
+        $seo_check = self::has_seo_plugin_managing_robots();
+
+        return [
+            'exists' => file_exists($robots_path),
+            'writable' => self::can_write_robots_txt(),
+            'managed_by_seo' => $seo_check['managed'],
+            'seo_plugin' => $seo_check['plugin'],
+            'can_auto_write' => self::can_write_robots_txt() && !$seo_check['managed'],
+            'path' => $robots_path,
+        ];
+    }
+
+    public static function ajax_apply_robots_block() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Acces refuse', 'geo-bot-monitor'));
+        }
+
+        check_ajax_referer('geo_bot_block', 'nonce');
+
+        $bots = isset($_POST['bots']) ? array_map('sanitize_text_field', wp_unslash($_POST['bots'])) : [];
+
+        if (empty($bots)) {
+            wp_send_json_error(['message' => __('Aucun bot selectionne', 'geo-bot-monitor')]);
+        }
+
+        $status = self::get_robots_txt_status();
+
+        if (!$status['can_auto_write']) {
+            $reason = '';
+            if ($status['managed_by_seo']) {
+                $reason = sprintf(
+                    __('Le fichier robots.txt est gere par %s. Configurez le blocage dans ses parametres.', 'geo-bot-monitor'),
+                    $status['seo_plugin']
+                );
+            } elseif (!$status['writable']) {
+                $reason = __('Le fichier robots.txt nest pas modifiable. Telechargez le fichier et envoyez-le manuellement via FTP.', 'geo-bot-monitor');
+            }
+
+            $generated_content = self::generate_full_robots_txt($bots);
+
+            wp_send_json_error([
+                'message' => $reason,
+                'can_download' => true,
+                'content' => $generated_content,
+                'status' => $status,
+            ]);
+        }
+
+        $result = self::update_robots_txt_with_blocks($bots);
+
+        if ($result['success']) {
+            foreach ($bots as $bot) {
+                self::add_blocked_bot($bot, ['robots']);
+            }
+
+            wp_send_json_success([
+                'message' => sprintf(
+                    __('%d bot(s) bloque(s) dans robots.txt', 'geo-bot-monitor'),
+                    count($bots)
+                ),
+                'path' => $result['path'],
+            ]);
+        } else {
+            $generated_content = self::generate_full_robots_txt($bots);
+
+            wp_send_json_error([
+                'message' => $result['error'],
+                'can_download' => true,
+                'content' => $generated_content,
+            ]);
+        }
+    }
+
+    public static function generate_full_robots_txt($bots) {
+        $robots_path = self::get_robots_txt_path();
+        $content = '';
+
+        if (file_exists($robots_path)) {
+            $content = file_get_contents($robots_path);
+
+            $marker_start = "# BEGIN GEO Bot Monitor";
+            $marker_end = "# END GEO Bot Monitor";
+            if (strpos($content, $marker_start) !== false) {
+                $pattern = '/' . preg_quote($marker_start, '/') . '.*?' . preg_quote($marker_end, '/') . '\s*/s';
+                $content = preg_replace($pattern, '', $content);
+            }
+        } else {
+            $content = "User-agent: *\nAllow: /\n\nSitemap: " . home_url('/sitemap.xml') . "\n";
+        }
+
+        $block_rules = "# BEGIN GEO Bot Monitor\n";
+        $block_rules .= "# Regles de blocage generees le " . gmdate('Y-m-d H:i:s') . "\n\n";
+
+        foreach ((array) $bots as $bot) {
+            $user_agent = self::get_user_agent($bot);
+            $block_rules .= "User-agent: $user_agent\n";
+            $block_rules .= "Disallow: /\n\n";
+        }
+
+        $block_rules .= "# END GEO Bot Monitor\n";
+
+        $full_content = trim($content) . "\n\n" . $block_rules;
+        return preg_replace("/\n{3,}/", "\n\n", trim($full_content) . "\n");
+    }
+
+    public static function ajax_get_robots_status() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Acces refuse', 'geo-bot-monitor'));
+        }
+
+        check_ajax_referer('geo_bot_block', 'nonce');
+
+        wp_send_json_success(self::get_robots_txt_status());
+    }
+
+    public static function is_geo_authority_suite_active() {
+        $active_plugins = apply_filters('active_plugins', get_option('active_plugins', []));
+        
+        return in_array('geo-authority-suite/geo-authority-suite.php', $active_plugins, true)
+            || in_array('geo-authority-suite-v1.2/geo-authority-suite.php', $active_plugins, true)
+            || class_exists('GEO_Authority_Suite')
+            || function_exists('geo_authority_suite_init');
+    }
+
+    public static function get_llms_txt_path() {
+        return ABSPATH . 'llms.txt';
+    }
+
+    public static function can_write_llms_txt() {
+        $llms_path = self::get_llms_txt_path();
+
+        if (file_exists($llms_path)) {
+            return is_writable($llms_path);
+        }
+
+        return is_writable(ABSPATH);
+    }
+
+    public static function get_llms_txt_status() {
+        $llms_path = self::get_llms_txt_path();
+        $geo_authority_active = self::is_geo_authority_suite_active();
+
+        return [
+            'exists' => file_exists($llms_path),
+            'writable' => self::can_write_llms_txt(),
+            'geo_authority_active' => $geo_authority_active,
+            'mode' => $geo_authority_active ? 'filter' : 'standalone',
+            'path' => $llms_path,
+        ];
+    }
+
+    public static function generate_standalone_llms_txt($bots) {
+        $site_name = get_bloginfo('name');
+        $site_url = home_url('/');
+        $site_description = get_bloginfo('description');
+
+        $content = "# $site_name\n";
+        $content .= "> $site_description\n\n";
+        $content .= "Site: $site_url\n\n";
+
+        $content .= "## Crawlers IA bloques\n\n";
+        $content .= "Les crawlers IA suivants ne sont pas autorises a indexer ce site :\n\n";
+
+        foreach ((array) $bots as $bot) {
+            $user_agent = self::get_user_agent($bot);
+            $content .= "- **$bot** (User-Agent: `$user_agent`)\n";
+        }
+
+        $content .= "\n### Directives de blocage\n\n";
+        $content .= "```\n";
+
+        foreach ((array) $bots as $bot) {
+            $user_agent = self::get_user_agent($bot);
+            $content .= "User-agent: $user_agent\n";
+            $content .= "Disallow: /\n\n";
+        }
+
+        $content .= "```\n\n";
+        $content .= "---\n";
+        $content .= "*Genere par GEO Bot Monitor le " . gmdate('Y-m-d H:i:s') . "*\n";
+
+        return $content;
+    }
+
+    public static function update_llms_txt_with_blocks($bots) {
+        $status = self::get_llms_txt_status();
+
+        if ($status['geo_authority_active']) {
+            return [
+                'success' => true,
+                'mode' => 'filter',
+                'message' => __('Les bots seront ajoutes au llms.txt via GEO Authority Suite', 'geo-bot-monitor'),
+            ];
+        }
+
+        if (!$status['writable']) {
+            return [
+                'success' => false,
+                'error' => __('Permissions insuffisantes pour ecrire le fichier llms.txt', 'geo-bot-monitor'),
+            ];
+        }
+
+        $ai_bots = [];
+        foreach ((array) $bots as $bot) {
+            if (self::is_ai_bot($bot)) {
+                $ai_bots[] = $bot;
+            }
+        }
+
+        if (empty($ai_bots)) {
+            return [
+                'success' => true,
+                'message' => __('Aucun bot IA a bloquer dans llms.txt', 'geo-bot-monitor'),
+            ];
+        }
+
+        $llms_path = self::get_llms_txt_path();
+        $content = self::generate_standalone_llms_txt($ai_bots);
+
+        $result = file_put_contents($llms_path, $content);
+
+        if ($result === false) {
+            return [
+                'success' => false,
+                'error' => __('Erreur lors de lecriture du fichier llms.txt', 'geo-bot-monitor'),
+            ];
+        }
+
+        return [
+            'success' => true,
+            'mode' => 'standalone',
+            'path' => $llms_path,
+            'bytes' => $result,
+        ];
+    }
+
+    public static function ajax_apply_llms_block() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Acces refuse', 'geo-bot-monitor'));
+        }
+
+        check_ajax_referer('geo_bot_block', 'nonce');
+
+        $bots = isset($_POST['bots']) ? array_map('sanitize_text_field', wp_unslash($_POST['bots'])) : [];
+
+        if (empty($bots)) {
+            wp_send_json_error(['message' => __('Aucun bot selectionne', 'geo-bot-monitor')]);
+        }
+
+        $status = self::get_llms_txt_status();
+
+        if ($status['geo_authority_active']) {
+            foreach ($bots as $bot) {
+                if (self::is_ai_bot($bot)) {
+                    self::add_blocked_bot($bot, ['llms']);
+                }
+            }
+
+            wp_send_json_success([
+                'message' => __('Bots ajoutes. Regenerez le llms.txt dans GEO Authority Suite.', 'geo-bot-monitor'),
+                'mode' => 'filter',
+                'regenerate_hint' => true,
+            ]);
+        }
+
+        $result = self::update_llms_txt_with_blocks($bots);
+
+        if ($result['success']) {
+            foreach ($bots as $bot) {
+                if (self::is_ai_bot($bot)) {
+                    self::add_blocked_bot($bot, ['llms']);
+                }
+            }
+
+            wp_send_json_success([
+                'message' => $result['message'] ?? __('Fichier llms.txt mis a jour', 'geo-bot-monitor'),
+                'mode' => $result['mode'] ?? 'standalone',
+                'path' => $result['path'] ?? '',
+            ]);
+        } else {
+            $ai_bots = array_filter($bots, [self::class, 'is_ai_bot']);
+            $generated_content = self::generate_standalone_llms_txt($ai_bots);
+
+            wp_send_json_error([
+                'message' => $result['error'],
+                'can_download' => true,
+                'content' => $generated_content,
+            ]);
+        }
+    }
+
+    public static function ajax_get_llms_status() {
+        if (!current_user_can('manage_options')) {
+            wp_die(esc_html__('Acces refuse', 'geo-bot-monitor'));
+        }
+
+        check_ajax_referer('geo_bot_block', 'nonce');
+
+        wp_send_json_success(self::get_llms_txt_status());
     }
 }
