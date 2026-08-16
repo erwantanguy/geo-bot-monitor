@@ -2,7 +2,7 @@
 /**
  * Plugin Name: GEO Bot Monitor
  * Description: Surveillance des visites de robots SEO et GEO/AI avec exports et comparaison de périodes
- * Version: 1.0.1
+ * Version: 1.1.1
  * Author: Erwan Tanguy
  * Text Domain: geo-bot-monitor
  * Requires at least: 6.0
@@ -13,9 +13,19 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('GEO_BOT_MONITOR_VERSION', '1.1.0');
+define('GEO_BOT_MONITOR_VERSION', '1.1.1');
 define('GEO_BOT_MONITOR_PATH', plugin_dir_path(__FILE__));
 define('GEO_BOT_MONITOR_URL', plugin_dir_url(__FILE__));
+
+require_once GEO_BOT_MONITOR_PATH . 'vendor/plugin-update-checker/plugin-update-checker.php';
+
+use YahnisElsts\PluginUpdateChecker\v5\PucFactory;
+
+$geoBotMonitorUpdateChecker = PucFactory::buildUpdateChecker(
+    'https://dl.ticoet.me/downloads/pluginsWP/geo-bot-monitor/details.json',
+    __FILE__,
+    'geo-bot-monitor'
+);
 
 require_once GEO_BOT_MONITOR_PATH . 'includes/bot-signatures.php';
 require_once GEO_BOT_MONITOR_PATH . 'includes/class-bot-detector.php';
