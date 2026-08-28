@@ -12,6 +12,33 @@ class GEO_Bot_Logger {
         $this->table_name = $wpdb->prefix . 'geo_bot_visits';
     }
 
+    /**
+     * Retourne le nom complet de la table.
+     *
+     * @return string
+     */
+    public function get_table_name() {
+        return $this->table_name;
+    }
+
+    /**
+     * Compresse un user-agent trop long pour économiser de l'espace disque.
+     *
+     * @param string $user_agent
+     * @return string
+     */
+    private function compress_user_agent($user_agent) {
+        $user_agent = sanitize_text_field($user_agent);
+        if (strlen($user_agent) <= 500) {
+            return $user_agent;
+        }
+
+        // Conserve les 250 premiers et 150 derniers caractères, compresse le milieu
+        $start = substr($user_agent, 0, 250);
+        $end = substr($user_agent, -150);
+        return $start . ' [...' . (strlen($user_agent) - 400) . ' chars...] ' . $end;
+    }
+
     public function log($bot_info) {
         global $wpdb;
 
@@ -21,7 +48,7 @@ class GEO_Bot_Logger {
                 'visit_date' => current_time('mysql'),
                 'bot_name' => sanitize_text_field($bot_info['bot_name']),
                 'bot_category' => sanitize_key($bot_info['bot_category']),
-                'user_agent' => sanitize_text_field($bot_info['user_agent']),
+                'user_agent' => $this->compress_user_agent($bot_info['user_agent']),
                 'ip_address' => sanitize_text_field($bot_info['ip_address']),
                 'url_visited' => esc_url_raw($bot_info['url_visited']),
                 'http_status' => http_response_code() ?: 200,

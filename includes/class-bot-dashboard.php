@@ -213,6 +213,8 @@ class GEO_Bot_Dashboard {
         <div class="wrap geo-bot-dashboard">
             <h1><?php _e('Bot Monitor - Maintenance', 'geo-bot-monitor'); ?></h1>
 
+            <?php settings_errors('geo_bot_monitor'); ?>
+
             <div class="geo-bot-maintenance-info">
                 <div class="geo-bot-stat-card">
                     <span class="stat-value"><?php echo number_format_i18n($db_size->total_rows ?? 0); ?></span>
@@ -222,6 +224,23 @@ class GEO_Bot_Dashboard {
                     <span class="stat-value"><?php echo esc_html($db_size->size_mb ?? '0'); ?> MB</span>
                     <span class="stat-label"><?php _e('Taille de la base', 'geo-bot-monitor'); ?></span>
                 </div>
+            </div>
+
+            <div class="geo-bot-maintenance-purge">
+                <h2><?php _e('Nettoyage rapide par ancienneté', 'geo-bot-monitor'); ?></h2>
+                <p class="description">
+                    <?php _e('Supprime immédiatement tous les enregistrements plus anciens que la durée choisie, puis optimise la table.', 'geo-bot-monitor'); ?>
+                </p>
+
+                <form method="post" action="">
+                    <?php wp_nonce_field('geo_bot_manual_cleanup', 'geo_bot_manual_cleanup_nonce'); ?>
+                    <input type="hidden" name="geo_bot_manual_cleanup" value="1">
+
+                    <label for="geo_bot_cleanup_days"><?php _e('Supprimer les visites de plus de', 'geo-bot-monitor'); ?></label>
+                    <input type="number" id="geo_bot_cleanup_days" name="geo_bot_cleanup_days" value="90" min="1" max="3650" class="small-text">
+                    <?php _e('jours', 'geo-bot-monitor'); ?>
+                    <?php submit_button(__('Nettoyer maintenant', 'geo-bot-monitor'), 'primary', 'submit', false); ?>
+                </form>
             </div>
 
             <div class="geo-bot-maintenance-purge">

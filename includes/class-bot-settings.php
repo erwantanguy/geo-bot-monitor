@@ -15,6 +15,32 @@ class GEO_Bot_Settings {
             'type' => 'string',
             'sanitize_callback' => 'sanitize_text_field',
         ]);
+
+        register_setting('geo_bot_monitor_settings', 'geo_bot_monitor_retention_days', [
+            'type' => 'integer',
+            'sanitize_callback' => function ($value) {
+                $value = absint($value);
+                return $value > 0 ? $value : 90;
+            },
+            'default' => 90,
+        ]);
+
+        register_setting('geo_bot_monitor_settings', 'geo_bot_monitor_auto_cleanup', [
+            'type' => 'boolean',
+            'sanitize_callback' => function ($value) {
+                return (bool) $value;
+            },
+            'default' => true,
+        ]);
+
+        register_setting('geo_bot_monitor_settings', 'geo_bot_monitor_size_warning_mb', [
+            'type' => 'integer',
+            'sanitize_callback' => function ($value) {
+                $value = absint($value);
+                return $value >= 0 ? $value : 100;
+            },
+            'default' => 100,
+        ]);
     }
 
     public function enqueue_scripts($hook) {
@@ -43,21 +69,69 @@ class GEO_Bot_Settings {
 
     public function render() {
         $api_key = get_option('geo_bot_monitor_api_key', '');
+        $retention_days = get_option('geo_bot_monitor_retention_days', 90);
+        $auto_cleanup = get_option('geo_bot_monitor_auto_cleanup', true);
+        $size_warning_mb = get_option('geo_bot_monitor_size_warning_mb', 100);
         $site_url = home_url();
         $nonce = wp_create_nonce('geo_bot_generate_key');
         ?>
         <div class="wrap geo-bot-dashboard">
             <h1><?php esc_html_e('Bot Monitor - Paramètres API', 'geo-bot-monitor'); ?></h1>
 
-            <div class="geo-bot-settings-section">
-                <h2><?php esc_html_e('Clé API', 'geo-bot-monitor'); ?></h2>
-                <p class="description">
-                    <?php esc_html_e('Cette clé permet aux applications externes de se connecter à votre site pour récupérer les données de Bot Monitor.', 'geo-bot-monitor'); ?>
-                </p>
+            <?php settings_errors('geo_bot_monitor'); ?>
 
-                <form method="post" action="options.php">
-                    <?php settings_fields('geo_bot_monitor_settings'); ?>
-                    
+            <form method="post" action="options.php">
+                <?php settings_fields('geo_bot_monitor_settings'); ?>
+
+                <div class="geo-bot-settings-section">
+                    <h2><?php esc_html_e('Maintenance automatique', 'geo-bot-monitor'); ?></h2>
+                    <p class="description">
+                        <?php esc_html_e('Configurez la rotation des logs pour éviter une croissance excessive de la base de données.', 'geo-bot-monitor'); ?>
+                    </p>
+
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="geo_bot_monitor_auto_cleanup"><?php esc_html_e('Nettoyage automatique', 'geo-bot-monitor'); ?></label>
+                            </th>
+                            <td>
+                                <label>
+                                    <input type="checkbox" id="geo_bot_monitor_auto_cleanup" name="geo_bot_monitor_auto_cleanup" value="1" <?php checked($auto_cleanup, true); ?>>
+                                    <?php esc_html_e('Activer la suppression automatique des anciennes visites', 'geo-bot-monitor'); ?>
+                                </label>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="geo_bot_monitor_retention_days"><?php esc_html_e('Conservation des logs (jours)', 'geo-bot-monitor'); ?></label>
+                            </th>
+                            <td>
+                                <input type="number" id="geo_bot_monitor_retention_days" name="geo_bot_monitor_retention_days" value="<?php echo esc_attr($retention_days); ?>" min="1" max="3650" class="small-text">
+                                <p class="description">
+                                    <?php esc_html_e('Les visites plus anciennes seront automatiquement supprimées. Recommandé : 90 jours.', 'geo-bot-monitor'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th scope="row">
+                                <label for="geo_bot_monitor_size_warning_mb"><?php esc_html_e('Seuil d\'alerte (Mo)', 'geo-bot-monitor'); ?></label>
+                            </th>
+                            <td>
+                                <input type="number" id="geo_bot_monitor_size_warning_mb" name="geo_bot_monitor_size_warning_mb" value="<?php echo esc_attr($size_warning_mb); ?>" min="0" max="10000" class="small-text">
+                                <p class="description">
+                                    <?php esc_html_e('Affiche une alerte admin si la table dépasse cette taille. 0 pour désactiver.', 'geo-bot-monitor'); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="geo-bot-settings-section">
+                    <h2><?php esc_html_e('Clé API', 'geo-bot-monitor'); ?></h2>
+                    <p class="description">
+                        <?php esc_html_e('Cette clé permet aux applications externes de se connecter à votre site pour récupérer les données de Bot Monitor.', 'geo-bot-monitor'); ?>
+                    </p>
+
                     <table class="form-table">
                         <tr>
                             <th scope="row">
@@ -65,10 +139,10 @@ class GEO_Bot_Settings {
                             </th>
                             <td>
                                 <div class="geo-bot-api-key-field">
-                                    <input type="text" 
-                                           id="geo_bot_monitor_api_key" 
-                                           name="geo_bot_monitor_api_key" 
-                                           value="<?php echo esc_attr($api_key); ?>" 
+                                    <input type="text"
+                                           id="geo_bot_monitor_api_key"
+                                           name="geo_bot_monitor_api_key"
+                                           value="<?php echo esc_attr($api_key); ?>"
                                            class="regular-text code">
                                     <button type="button" id="generate-api-key" class="button" data-nonce="<?php echo esc_attr($nonce); ?>">
                                         <?php esc_html_e('Générer une nouvelle clé', 'geo-bot-monitor'); ?>
@@ -85,8 +159,8 @@ class GEO_Bot_Settings {
                     </table>
 
                     <?php submit_button(esc_html__('Enregistrer', 'geo-bot-monitor')); ?>
-                </form>
-            </div>
+                </div>
+            </form>
 
             <div class="geo-bot-settings-section">
                 <h2><?php esc_html_e('Endpoints API', 'geo-bot-monitor'); ?></h2>
