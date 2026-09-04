@@ -50,6 +50,7 @@ function geo_bot_get_signatures() {
             'OAI-SearchBot' => ['OAI-SearchBot'],
             'Meta-ExternalAgent' => ['Meta-ExternalAgent'],
             'Meta-ExternalFetcher' => ['Meta-ExternalFetcher'],
+            'Meta-WebIndexer' => ['Meta-WebIndexer'],
             'Amazonbot' => ['Amazonbot'],
             'ImagesiftBot' => ['ImagesiftBot'],
             'Omgili' => ['omgili', 'omgilibot'],

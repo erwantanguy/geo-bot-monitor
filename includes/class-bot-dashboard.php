@@ -206,6 +206,156 @@ class GEO_Bot_Dashboard {
         <?php
     }
 
+    public function render_ia_search() {
+        $start_date = isset($_GET['start_date']) ? sanitize_text_field(wp_unslash($_GET['start_date'])) : gmdate('Y-m-d', strtotime('-30 days'));
+        $end_date = isset($_GET['end_date']) ? sanitize_text_field(wp_unslash($_GET['end_date'])) : gmdate('Y-m-d');
+
+        $stats = $this->logger->get_stats($start_date, $end_date);
+        $category_labels = geo_bot_get_category_labels();
+        $category_colors = geo_bot_get_category_colors();
+
+        $ai_total = 0;
+        $search_total = 0;
+        foreach ($stats['by_category'] as $cat => $data) {
+            if ($cat === 'geo_ai') {
+                $ai_total += (int) $data->count;
+            } elseif ($cat === 'seo') {
+                $search_total += (int) $data->count;
+            }
+        }
+        $total = max(1, $stats['total']);
+        $ai_share = round(($ai_total / $total) * 100, 1);
+        $search_share = round(($search_total / $total) * 100, 1);
+
+        $ai_bots = $this->logger->get_top_bots_by_category($start_date, $end_date, 'geo_ai', 10);
+        $search_bots = $this->logger->get_top_bots_by_category($start_date, $end_date, 'seo', 10);
+        $ai_urls = $this->logger->get_top_urls_by_category($start_date, $end_date, 'geo_ai', 10);
+        $search_urls = $this->logger->get_top_urls_by_category($start_date, $end_date, 'seo', 10);
+        ?>
+        <div class="wrap geo-bot-dashboard">
+            <h1><?php esc_html_e('Bot Monitor - IA vs Search', 'geo-bot-monitor'); ?></h1>
+
+            <div class="geo-bot-filters">
+                <form method="get" action="">
+                    <input type="hidden" name="page" value="geo-bot-ia-search">
+                    <label for="start_date"><?php esc_html_e('Du', 'geo-bot-monitor'); ?></label>
+                    <input type="date" id="start_date" name="start_date" value="<?php echo esc_attr($start_date); ?>">
+                    <label for="end_date"><?php esc_html_e('Au', 'geo-bot-monitor'); ?></label>
+                    <input type="date" id="end_date" name="end_date" value="<?php echo esc_attr($end_date); ?>">
+                    <button type="submit" class="button button-primary"><?php esc_html_e('Filtrer', 'geo-bot-monitor'); ?></button>
+                </form>
+            </div>
+
+            <div class="geo-bot-stats-grid">
+                <div class="geo-bot-stat-card" style="border-left-color: <?php echo esc_attr($category_colors['geo_ai'] ?? '#ea4335'); ?>">
+                    <span class="stat-value"><?php echo esc_html(number_format_i18n($ai_total)); ?></span>
+                    <span class="stat-label"><?php esc_html_e('Visites IA / GEO', 'geo-bot-monitor'); ?> (<?php echo esc_html($ai_share); ?>%)</span>
+                </div>
+                <div class="geo-bot-stat-card" style="border-left-color: <?php echo esc_attr($category_colors['seo'] ?? '#4285f4'); ?>">
+                    <span class="stat-value"><?php echo esc_html(number_format_i18n($search_total)); ?></span>
+                    <span class="stat-label"><?php esc_html_e('Visites moteurs de recherche', 'geo-bot-monitor'); ?> (<?php echo esc_html($search_share); ?>%)</span>
+                </div>
+            </div>
+
+            <div class="geo-bot-tables-grid">
+                <div class="geo-bot-table-card">
+                    <h3><?php esc_html_e('Top robots IA / GEO', 'geo-bot-monitor'); ?></h3>
+                    <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('Robot', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Visites', 'geo-bot-monitor'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($ai_bots as $bot): ?>
+                            <tr>
+                                <td><strong><?php echo esc_html($bot->bot_name); ?></strong></td>
+                                <td><?php echo esc_html(number_format_i18n($bot->count)); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($ai_bots)): ?>
+                            <tr>
+                                <td colspan="2" class="geo-bot-empty"><?php esc_html_e('Aucune visite IA sur cette période.', 'geo-bot-monitor'); ?></td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="geo-bot-table-card">
+                    <h3><?php esc_html_e('Top robots moteurs de recherche', 'geo-bot-monitor'); ?></h3>
+                    <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('Robot', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Visites', 'geo-bot-monitor'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($search_bots as $bot): ?>
+                            <tr>
+                                <td><strong><?php echo esc_html($bot->bot_name); ?></strong></td>
+                                <td><?php echo esc_html(number_format_i18n($bot->count)); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($search_bots)): ?>
+                            <tr>
+                                <td colspan="2" class="geo-bot-empty"><?php esc_html_e('Aucune visite de moteur sur cette période.', 'geo-bot-monitor'); ?></td>
+                            </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="geo-bot-table-card">
+                    <h3><?php esc_html_e('Top pages visitées par les IA', 'geo-bot-monitor'); ?></h3>
+                    <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('URL', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Visites', 'geo-bot-monitor'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($ai_urls as $url): ?>
+                            <tr>
+                                <td class="geo-bot-url-cell" title="<?php echo esc_attr($url->url_visited); ?>">
+                                    <?php echo esc_html(wp_trim_words($url->url_visited, 10, '...')); ?>
+                                </td>
+                                <td><?php echo esc_html(number_format_i18n($url->count)); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="geo-bot-table-card">
+                    <h3><?php esc_html_e('Top pages visitées par les moteurs', 'geo-bot-monitor'); ?></h3>
+                    <table class="widefat striped">
+                        <thead>
+                            <tr>
+                                <th><?php esc_html_e('URL', 'geo-bot-monitor'); ?></th>
+                                <th><?php esc_html_e('Visites', 'geo-bot-monitor'); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($search_urls as $url): ?>
+                            <tr>
+                                <td class="geo-bot-url-cell" title="<?php echo esc_attr($url->url_visited); ?>">
+                                    <?php echo esc_html(wp_trim_words($url->url_visited, 10, '...')); ?>
+                                </td>
+                                <td><?php echo esc_html(number_format_i18n($url->count)); ?></td>
+                            </tr>
+                            <?php endforeach; ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php
+    }
+
     public function render_maintenance() {
         $months = $this->logger->get_available_months();
         $db_size = $this->logger->get_database_size();

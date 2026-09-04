@@ -276,4 +276,52 @@ class GEO_Bot_Logger {
 
         return (int) $wpdb->get_var($sql);
     }
+
+    public function get_top_urls_by_category($start_date, $end_date, $category, $limit = 10) {
+        global $wpdb;
+
+        $start_date = sanitize_text_field($start_date);
+        $end_date = sanitize_text_field($end_date);
+        $category = sanitize_key($category);
+        $limit = absint($limit);
+        $table = esc_sql($this->table_name);
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT url_visited, COUNT(*) as count
+             FROM `$table`
+             WHERE visit_date BETWEEN %s AND %s
+             AND bot_category = %s
+             GROUP BY url_visited
+             ORDER BY count DESC
+             LIMIT %d",
+            $start_date . ' 00:00:00',
+            $end_date . ' 23:59:59',
+            $category,
+            $limit
+        ));
+    }
+
+    public function get_top_bots_by_category($start_date, $end_date, $category, $limit = 10) {
+        global $wpdb;
+
+        $start_date = sanitize_text_field($start_date);
+        $end_date = sanitize_text_field($end_date);
+        $category = sanitize_key($category);
+        $limit = absint($limit);
+        $table = esc_sql($this->table_name);
+
+        return $wpdb->get_results($wpdb->prepare(
+            "SELECT bot_name, COUNT(*) as count
+             FROM `$table`
+             WHERE visit_date BETWEEN %s AND %s
+             AND bot_category = %s
+             GROUP BY bot_name
+             ORDER BY count DESC
+             LIMIT %d",
+            $start_date . ' 00:00:00',
+            $end_date . ' 23:59:59',
+            $category,
+            $limit
+        ));
+    }
 }

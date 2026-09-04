@@ -2,7 +2,7 @@
 /**
  * Plugin Name: GEO Bot Monitor
  * Description: Surveillance des visites de robots SEO et GEO/AI avec exports et comparaison de périodes
- * Version: 1.1.2
+ * Version: 1.1.3
  * Author: Erwan Tanguy
  * Text Domain: geo-bot-monitor
  * Requires at least: 6.0
@@ -13,7 +13,7 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
-define('GEO_BOT_MONITOR_VERSION', '1.1.2');
+define('GEO_BOT_MONITOR_VERSION', '1.1.3');
 define('GEO_BOT_MONITOR_PATH', plugin_dir_path(__FILE__));
 define('GEO_BOT_MONITOR_URL', plugin_dir_url(__FILE__));
 
@@ -145,6 +145,15 @@ add_action('admin_menu', function() {
 
     add_submenu_page(
         'geo-bot-monitor',
+        __('IA vs Search', 'geo-bot-monitor'),
+        __('IA vs Search', 'geo-bot-monitor'),
+        'manage_options',
+        'geo-bot-ia-search',
+        'geo_bot_render_ia_search'
+    );
+
+    add_submenu_page(
+        'geo-bot-monitor',
         __('Exporter', 'geo-bot-monitor'),
         __('Exporter', 'geo-bot-monitor'),
         'manage_options',
@@ -217,6 +226,11 @@ function geo_bot_render_dashboard() {
 function geo_bot_render_compare() {
     $dashboard = new GEO_Bot_Dashboard();
     $dashboard->render_compare();
+}
+
+function geo_bot_render_ia_search() {
+    $dashboard = new GEO_Bot_Dashboard();
+    $dashboard->render_ia_search();
 }
 
 function geo_bot_render_export() {

@@ -6,7 +6,7 @@
 
 ## Téléchargement
 
-- **Version actuelle :** 1.1.2
+- **Version actuelle :** 1.1.3
 - **Fichier ZIP :** [https://dl.ticoet.me/downloads/pluginsWP/geo-bot-monitor/geo-bot-monitor.zip](https://dl.ticoet.me/downloads/pluginsWP/geo-bot-monitor/geo-bot-monitor.zip)
 - **Mise à jour :** automatique via le tableau de bord WordPress (plugin-update-checker)
 
@@ -50,16 +50,25 @@ Le plugin identifie les principaux crawlers par leur user-agent et leur catégor
 - Top 20 des robots les plus actifs
 - Graphiques interactifs (Chart.js)
 
-### 3. Comparaison de périodes
+### 3. Tableau de bord IA vs Search *(nouveau en v1.1.3)*
+Comparez en un coup d’œil l’activité des crawlers IA (GEO / AI) et des moteurs de recherche classiques :
+
+- Visites IA vs visites moteurs
+- Part en pourcentage
+- Top robots IA et top robots de recherche
+- Pages les plus explorées par les IA
+- Pages les plus explorées par les moteurs
+
+### 4. Comparaison de périodes
 Comparez l’activité des robots entre deux périodes pour mesurer l’impact d’une mise à jour, d’une campagne ou d’une publication.
 
-### 4. Export des données
+### 5. Export des données
 Exportez les logs au format **CSV** pour une analyse externe ou un reporting client.
 
-### 5. Blocage de robots indésirables
+### 6. Blocage de robots indésirables
 Possibilité de bloquer certains user-agents via les réglages.
 
-### 6. Maintenance automatique *(nouveau en v1.1.2)*
+### 7. Maintenance automatique *(v1.1.2)*
 Pour éviter une explosion de la base de données :
 
 - **Purge automatique** des logs anciens (durée configurable, par défaut 90 jours)
@@ -68,8 +77,8 @@ Pour éviter une explosion de la base de données :
 - **Nettoyage manuel rapide** depuis le tableau de bord
 - **Compression des user-agents** trop longs
 
-### 7. API sécurisée
-Une clé API permet de récupérer les données de Bot Monitor depuis une application externe.
+### 8. API sécurisée
+Une clé API permet de récupérer les données de Bot Monitor depuis une application externe, avec désormais les **top pages par catégorie de robot** (v1.1.3).
 
 ---
 

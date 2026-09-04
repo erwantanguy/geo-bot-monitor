@@ -286,6 +286,22 @@ class GEO_Bot_API {
             ];
         }
 
+        $top_urls_by_category = [];
+        $category_slugs = array_keys(geo_bot_get_signatures());
+        foreach ($category_slugs as $cat) {
+            $cat_urls = $this->logger->get_top_urls_by_category($start_date, $end_date, $cat, 5);
+            if (!empty($cat_urls)) {
+                $formatted_urls = [];
+                foreach ($cat_urls as $url) {
+                    $formatted_urls[] = [
+                        'url' => $url->url_visited,
+                        'count' => (int) $url->count,
+                    ];
+                }
+                $top_urls_by_category[$cat] = $formatted_urls;
+            }
+        }
+
         return rest_ensure_response([
             'period' => [
                 'start' => $start_date,
@@ -296,6 +312,7 @@ class GEO_Bot_API {
             'by_bot' => $by_bot,
             'by_day' => $by_day,
             'top_urls' => $top_urls,
+            'top_urls_by_category' => $top_urls_by_category,
         ]);
     }
 
